@@ -12,3 +12,67 @@ The system supports Guests (who can browse and search flights), Passengers (who 
 
 Key features include seat selection, smart seat suggestions based on availability and position, secure authentication using JWT, and optimized performance using Redis caching. The application is containerized using Docker and demonstrates scalable, modular backend design suitable for real-world systems.
 
+
+
+🧾 UC1: User Registration \& Login (Auth Service)
+
+🎯 Objective
+
+
+
+Allow users to create an account and securely log in to access the system.
+
+
+
+👤 Actors
+
+Guest (not logged in)
+
+Passenger
+
+Airline Staff
+
+✅ Features
+
+🔹 Register Account
+
+
+
+Users can create an account by providing:
+
+
+
+Full Name
+
+Email
+
+Password
+
+Role (Passenger / Staff)
+
+
+
+✔ Each email must be unique
+
+✔ Password is securely stored
+
+
+
+🔹 Login
+
+
+
+Registered users can log in using:
+
+
+
+Email
+
+Password
+
+
+
+✔ On successful login, a secure token (JWT) is generated
+
+✔ This token is used for accessing protected features later
+

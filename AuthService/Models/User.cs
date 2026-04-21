@@ -1,0 +1,17 @@
+namespace AuthService.Models;
+public class User
+{
+    public int Id { get; set; }
+
+    public string FullName { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    // BCrypt hash is stored
+    public string PasswordHash { get; set; } = string.Empty;
+
+    // Roles - STAFF can add flights, PASSENGER can book
+    public string Role { get; set; } = "PASSENGER";
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
