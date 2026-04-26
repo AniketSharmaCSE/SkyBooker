@@ -20,6 +20,8 @@ public class FlightResponse
     public string Destination { get; set; } = string.Empty;
     public DateTime DepartureTime { get; set; }
     public DateTime ArrivalTime { get; set; }
+
+    public string TravelDuration { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public int TotalSeats { get; set; }
     public int AvailableSeats { get; set; }

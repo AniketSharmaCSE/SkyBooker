@@ -1,24 +1,83 @@
-
 services:
 
-  # SQL Server 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: airline_sqlserver
     environment:
-      ACCEPT_EULA: "Y"                         
-      SA_PASSWORD: "YourStrong@Passw0rd"        
-      MSSQL_PID: "Developer"                   
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong@Passw0rd"
+      MSSQL_PID: "Developer"
     ports:
-      - "1433:1433"                            
+      - "1433:1433"
     volumes:
-      - sqlserver_data:/var/opt/mssql          
+      - sqlserver_data:/var/opt/mssql
     healthcheck:
       test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -Q "SELECT 1" -No
       interval: 10s
       timeout: 5s
       retries: 5
 
+  auth-service:
+    build: ./AuthService
+    container_name: airline_auth
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineAuth;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
+      - Jwt__Issuer=AuthService
+      - Jwt__Audience=AirlineBookingApp
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  flight-service:
+    build: ./FlightService
+    container_name: airline_flight
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineFlight;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
+      - Jwt__Issuer=AuthService
+      - Jwt__Audience=AirlineBookingApp
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  seat-service:
+    build: ./SeatService
+    container_name: airline_seat
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineSeat;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
+      - Jwt__Issuer=AuthService
+      - Jwt__Audience=AirlineBookingApp
+      - ServiceUrls__FlightService=http://flight-service:8080
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  booking-service:
+    build: ./BookingService
+    container_name: airline_booking
+    ports:
+      - "5003:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineBookingDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
+      - Jwt__Issuer=AuthService
+      - Jwt__Audience=AirlineBookingApp
+      - ServiceUrls__SeatService=http://seat-service:8080
+    depends_on:
+      sqlserver:
+        condition: service_healthy
 
 volumes:
   sqlserver_data:

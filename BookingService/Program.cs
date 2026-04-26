@@ -1,27 +1,31 @@
 using System.Text;
-using AuthService.Data;
-using AuthService.Middleware;
+using BookingService.Data;
+using BookingService.Middleware;
+using BookingService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 
-builder.Services.AddDbContext<AuthDbContext>(options =>
+builder.Services.AddDbContext<BookingDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
     ));
 
-builder.Services.AddScoped<AuthService.Services.AuthService>();
+
+builder.Services.AddHttpClient("SeatService");
+
+builder.Services.AddScoped<BookingManagementService>();
 
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -38,20 +42,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
-
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHttpContextAccessor(); 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Auth Service",
+        Title = "Booking Service",
         Version = "v1",
-        Description = "Handles user registration and login for AirlineBooking"
+        Description = "Handles flight bookings for AirlineBooking"
     });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Enter: Bearer {your_token}",
+        Description = "Enter: Bearer {your_token_from_auth_service}",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -62,8 +66,7 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                    { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
@@ -75,10 +78,9 @@ var app = builder.Build();
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<BookingDbContext>();
     db.Database.Migrate();
 }
 
@@ -87,7 +89,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth Service v1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Booking Service v1");
         c.RoutePrefix = string.Empty;
     });
 }

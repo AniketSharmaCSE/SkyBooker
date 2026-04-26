@@ -6,7 +6,7 @@ namespace AuthService.Controllers;
 
 
 [ApiController]
-[Route("auth")]  // Base route: all endpoints here start with /auth
+[Route("auth")]
 public class AuthController : ControllerBase
 {
     private readonly Services.AuthService _authService;
@@ -16,11 +16,10 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    /// <summary>Register a new user (PASSENGER or STAFF)</summary>
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        // Basic validation
+        // validate inputs
         if (string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Password) ||
             string.IsNullOrWhiteSpace(request.FullName))
@@ -28,21 +27,22 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "FullName, Email, and Password are required." });
         }
 
+        // check length
         if (request.Password.Length < 6)
             return BadRequest(new { message = "Password must be at least 6 characters." });
 
         var (success, message) = await _authService.RegisterAsync(request);
 
         if (!success)
-            return Conflict(new { message }); // 409 Conflict for duplicate email
+            return Conflict(new { message });
 
         return Ok(new { message });
     }
 
-    /// <summary>Login and receive a JWT token</summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
+        // missing inputs
         if (string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Password))
         {
@@ -52,7 +52,7 @@ public class AuthController : ControllerBase
         var (success, response, message) = await _authService.LoginAsync(request);
 
         if (!success)
-            return Unauthorized(new { message }); // 401 Unauthorized for wrong credentials
+            return Unauthorized(new { message });
 
         return Ok(response);
     }

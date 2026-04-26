@@ -4,28 +4,27 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SeatService.Data;
+using SeatService.Middleware;
 using SeatService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// PHASE 1: Register Services
 
 builder.Services.AddDbContext<SeatDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
+    ));
 
-// 💡 CONCEPT: IHttpClientFactory
-// We use this instead of "new HttpClient()" for two reasons:
-// 1. It manages connection pooling — avoids socket exhaustion under load
-// 2. Named clients let us configure different base URLs for different services
 builder.Services.AddHttpClient("FlightService");
 
 builder.Services.AddScoped<SeatManagementService>();
 
-// Same JWT config — all services share the same token contract
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -34,7 +33,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+
+            RoleClaimType = "role"
         };
     });
 
@@ -64,11 +65,10 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ──────────────────────────────────────────────
-// PHASE 2: Configure Pipeline
-// ──────────────────────────────────────────────
 
 var app = builder.Build();
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 using (var scope = app.Services.CreateScope())
 {

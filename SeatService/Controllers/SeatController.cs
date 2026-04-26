@@ -16,60 +16,53 @@ public class SeatController : ControllerBase
         _seatService = seatService;
     }
 
-    //Generate seats for a flight — STAFF only, called after adding a flight
+    // run once per flight
     [HttpPost("generate")]
     [Authorize(Roles = "STAFF")]
     public async Task<IActionResult> GenerateSeats([FromBody] GenerateSeatsRequest request)
     {
-        if (request.FlightId <= 0 || request.TotalSeats <= 0)
-            return BadRequest(new { message = "FlightId and TotalSeats must be greater than 0." });
-
         var (success, message) = await _seatService.GenerateSeatsAsync(request);
-
         if (!success)
-            return Conflict(new { message });
+            return BadRequest(new { message });
 
         return Ok(new { message });
     }
 
-    // Get the full seat map for a flight — everyone can view
+    // view seat map
     [HttpGet("{flightId}")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetSeatMap(int flightId)
+    public async Task<IActionResult> GetSeats(int flightId)
     {
         var seats = await _seatService.GetSeatMapAsync(flightId);
-
-        if (!seats.Any())
-            return NotFound(new { message = $"No seats found for flight {flightId}. Have seats been generated?" });
-
         return Ok(seats);
     }
 
-    // Get top 3 smart seat suggestions for a flight
-    /// Seats are scored on comfort heuristics:
-    /// Window seats (+3), Aisle seats (+1), Front rows 1-10 (+2), Rows 11-20 (+1)
-
-    [HttpGet("{flightId}/suggest")]
-    [Authorize]  // Any logged-in user (PASSENGER or STAFF)
-    public async Task<IActionResult> SuggestSeats(int flightId)
+    [HttpPost("book-internal")]
+    public async Task<IActionResult> BookSeatInternal([FromBody] BookSeatRequest request)
     {
-        var result = await _seatService.SuggestSeatsAsync(flightId);
-        return Ok(result);
-    }
-
-    // Book a specific seat
-    [HttpPost("book")]
-    [Authorize(Roles = "PASSENGER")]
-    public async Task<IActionResult> BookSeat([FromBody] BookSeatRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.SeatNumber))
-            return BadRequest(new { message = "SeatNumber is required." });
+        // check internal auth key
+        var internalKey = Request.Headers["X-Internal-Key"].ToString();
+        if (internalKey != "SkyBooker_Internal_2024!")
+            return Unauthorized(new { message = "Internal endpoint." });
 
         var (success, seat, message) = await _seatService.BookSeatAsync(request);
-
         if (!success)
-            return Conflict(new { message });  
+            return BadRequest(new { message });
 
         return Ok(new { message, seat });
+    }
+
+    [HttpGet("suggest-internal/{flightId}")]
+    public async Task<IActionResult> SuggestSeatInternal(int flightId, [FromQuery] string? preference)
+    {
+        var internalKey = Request.Headers["X-Internal-Key"].ToString();
+        if (internalKey != "SkyBooker_Internal_2024!")
+            return Unauthorized(new { message = "Internal endpoint." });
+
+        var result = await _seatService.SuggestSeatsAsync(flightId, preference);
+        if (!result.SuggestedSeats.Any())
+            return NotFound(new { message = result.Reasoning });
+
+        return Ok(result);
     }
 }

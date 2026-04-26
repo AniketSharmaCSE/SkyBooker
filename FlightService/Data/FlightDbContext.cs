@@ -1,4 +1,4 @@
-using FlightService.Models;
+using FlightService.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlightService.Data;
@@ -11,12 +11,10 @@ public class FlightDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Flight numbers should be unique 
         modelBuilder.Entity<Flight>()
             .HasIndex(f => f.FlightNumber)
             .IsUnique();
 
-        // Price stored with 2 decimal places 
         modelBuilder.Entity<Flight>()
             .Property(f => f.Price)
             .HasColumnType("decimal(10, 2)");

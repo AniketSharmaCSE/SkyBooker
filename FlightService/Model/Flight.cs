@@ -1,4 +1,4 @@
-namespace FlightService.Models;
+namespace FlightService.Model;
 public class Flight
 {
     public int Id { get; set; }

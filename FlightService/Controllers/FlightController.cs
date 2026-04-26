@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FlightService.Controllers;
 
-
 [ApiController]
 [Route("flights")]
 public class FlightController : ControllerBase
@@ -17,25 +16,27 @@ public class FlightController : ControllerBase
         _flightService = flightService;
     }
 
-    // Add a new flight — STAFF only
+    // only staff can add flights
     [HttpPost]
     [Authorize(Roles = "STAFF")]
     public async Task<IActionResult> AddFlight([FromBody] AddFlightRequest request)
     {
         var (success, flight, message) = await _flightService.AddFlightAsync(request);
-
         if (!success)
             return BadRequest(new { message });
 
-        return CreatedAtAction(nameof(GetFlights), new { }, flight);
+        return CreatedAtAction(nameof(SearchFlights), new { }, flight);
     }
 
-    // Get all flights — anyone can view
+    // search flights
     [HttpGet]
-    [AllowAnonymous]   
-    public async Task<IActionResult> GetFlights()
+    [AllowAnonymous]
+    public async Task<IActionResult> SearchFlights(
+        [FromQuery] string? origin,
+        [FromQuery] string? destination,
+        [FromQuery] DateTime? date)
     {
-        var flights = await _flightService.GetAllFlightsAsync();
+        var flights = await _flightService.SearchFlightsAsync(origin, destination, date);
         return Ok(flights);
     }
 }

@@ -1,16 +1,19 @@
 using System.Text;
 using FlightService.Data;
+using FlightService.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
- 
-// Register Services
+
 
 builder.Services.AddDbContext<FlightDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
+    ));
 
 builder.Services.AddScoped<FlightService.Services.FlightManagementService>();
 
@@ -26,7 +29,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+
+            RoleClaimType = "role"
         };
     });
 
@@ -43,7 +48,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Manages flights for AirlineBooking"
     });
 
-    // JWT in Swagger 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Enter: Bearer {your_token_from_auth_service}",
@@ -65,11 +69,11 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configure HTTP Pipeline
 
 var app = builder.Build();
 
-// Auto-apply migrations on startup
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FlightDbContext>();

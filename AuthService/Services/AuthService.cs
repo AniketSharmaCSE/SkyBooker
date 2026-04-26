@@ -13,7 +13,6 @@ public class AuthService
     private readonly AuthDbContext _db;
     private readonly IConfiguration _config;
 
-    // Dependency Injection
     public AuthService(AuthDbContext db, IConfiguration config)
     {
         _db = db;
@@ -22,22 +21,17 @@ public class AuthService
 
     public async Task<(bool Success, string Message)> RegisterAsync(RegisterRequest request)
     {
-        // Normalize email so "User@Email.com" and "user@email.com" are treated the same
         var email = request.Email.Trim().ToLower();
 
-        // Check if email already exists before trying to insert
         var exists = await _db.Users.AnyAsync(u => u.Email == email);
         if (exists)
             return (false, "Email already registered.");
 
-        // Validate role
         var allowedRoles = new[] { "PASSENGER", "STAFF" };
         var role = request.Role.ToUpper();
         if (!allowedRoles.Contains(role))
             return (false, "Role must be PASSENGER or STAFF.");
 
-        // BCrypt hashing the password
-        // Work factor 12 for 2^12 rounds 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12);
 
         var user = new User
@@ -58,7 +52,6 @@ public class AuthService
     {
         var email = request.Email.Trim().ToLower();
 
-        // Find the user by email
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
         if (user == null)
@@ -68,7 +61,6 @@ public class AuthService
         if (!passwordValid)
             return (false, null, "Invalid email or password.");
 
-        // Generate JWT token
         var token = GenerateJwt(user);
 
         var response = new AuthResponse
@@ -84,17 +76,15 @@ public class AuthService
 
     private string GenerateJwt(User user)
     {
-    
         var claims = new[]
         {
-            // Standard claims
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // Unique token ID
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
 
-            // Custom claims
             new Claim("fullName", user.FullName),
-            new Claim(ClaimTypes.Role, user.Role)
+
+            new Claim("role", user.Role)
         };
 
         var key = new SymmetricSecurityKey(
@@ -106,7 +96,7 @@ public class AuthService
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(8),  // Token expires in 8 hours
+            expires: DateTime.UtcNow.AddHours(8),
             signingCredentials: creds
         );
 

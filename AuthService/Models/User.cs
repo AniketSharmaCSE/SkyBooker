@@ -7,10 +7,8 @@ public class User
 
     public string Email { get; set; } = string.Empty;
 
-    // BCrypt hash is stored
     public string PasswordHash { get; set; } = string.Empty;
 
-    // Roles - STAFF can add flights, PASSENGER can book
     public string Role { get; set; } = "PASSENGER";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

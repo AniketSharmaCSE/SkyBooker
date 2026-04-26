@@ -1,13 +1,11 @@
 namespace SeatService.DTOs;
 
-// Request to generate seats for a newly created flight 
 public class GenerateSeatsRequest
 {
     public int FlightId { get; set; }
     public int TotalSeats { get; set; } 
 }
 
-// Request to book a specific seat
 public class BookSeatRequest
 {
     public int FlightId { get; set; }
@@ -15,7 +13,6 @@ public class BookSeatRequest
     public int PassengerId { get; set; }
 }
 
-// Response for each seat in the seat map
 public class SeatResponse
 {
     public int Id { get; set; }
@@ -27,7 +24,6 @@ public class SeatResponse
     public int ComfortScore { get; set; }
 }
 
-// Response when suggesting top 3 seats
 public class SeatSuggestionResponse
 {
     public List<SeatResponse> SuggestedSeats { get; set; } = new();

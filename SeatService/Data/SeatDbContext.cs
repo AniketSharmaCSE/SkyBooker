@@ -11,7 +11,6 @@ public class SeatDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Composite unique index on FlightId, SeatNumber means the database rejects any attempt to insert two rows with the same flight + seat combo.
         modelBuilder.Entity<Seat>()
             .HasIndex(s => new { s.FlightId, s.SeatNumber })
             .IsUnique();

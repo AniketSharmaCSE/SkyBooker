@@ -9,12 +9,10 @@ public class AuthDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Make email unique 
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
 
-        // Limit column sizes to avoid unbounded storage
         modelBuilder.Entity<User>()
             .Property(u => u.Email)
             .HasMaxLength(100);

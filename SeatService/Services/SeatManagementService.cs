@@ -19,19 +19,12 @@ public class SeatManagementService
         _config = config;
     }
 
-    // Generate seats for a flight
     public async Task<(bool Success, string Message)> GenerateSeatsAsync(GenerateSeatsRequest request)
     {
-        // Check if seats already exist for this flight
         var alreadyExists = await _db.Seats.AnyAsync(s => s.FlightId == request.FlightId);
         if (alreadyExists)
             return (false, $"Seats already generated for flight {request.FlightId}.");
 
-        //E.g ->
-        // A and F = window seats
-        // B and E = middle seats
-        // C and D = aisle seats
-        // generate rows until TotalSeats matched.
 
         var columns = new[] { "A", "B", "C", "D", "E", "F" };
         var seats = new List<Seat>();
@@ -47,7 +40,7 @@ public class SeatManagementService
                 seats.Add(new Seat
                 {
                     FlightId = request.FlightId,
-                    SeatNumber = $"{row}{col}",   // e.g. "1A", "12F"
+                    SeatNumber = $"{row}{col}",
                     Row = row,
                     Column = col,
                     Status = SeatStatus.Available
@@ -64,7 +57,6 @@ public class SeatManagementService
         return (true, $"{seats.Count} seats generated for flight {request.FlightId}.");
     }
 
-    // Get seat map for the flight
   public async Task<List<SeatResponse>> GetSeatMapAsync(int flightId)
     {
         var seats = await _db.Seats
@@ -76,8 +68,7 @@ public class SeatManagementService
         return seats.Select(s => MapToResponse(s)).ToList();
     }
 
-    // Smart Seat Suggestion
-    public async Task<SeatSuggestionResponse> SuggestSeatsAsync(int flightId)
+    public async Task<SeatSuggestionResponse> SuggestSeatsAsync(int flightId, string? preference)
     {
         var availableSeats = await _db.Seats
             .Where(s => s.FlightId == flightId && s.Status == SeatStatus.Available)
@@ -92,11 +83,9 @@ public class SeatManagementService
             };
         }
 
-        // Score each available seat
         var scored = availableSeats
-            .Select(s => new { Seat = s, Score = CalculateComfortScore(s) })
+            .Select(s => new { Seat = s, Score = CalculateComfortScore(s, preference) })
             .OrderByDescending(x => x.Score)
-            .Take(3)
             .ToList();
 
         var suggestions = scored.Select(x =>
@@ -114,10 +103,8 @@ public class SeatManagementService
         };
     }
 
-    // Book a seat
     public async Task<(bool Success, SeatResponse? Seat, string Message)> BookSeatAsync(BookSeatRequest request)
     {
-        // Find the exact seat
         var seat = await _db.Seats
             .FirstOrDefaultAsync(s =>
                 s.FlightId == request.FlightId &&
@@ -126,43 +113,48 @@ public class SeatManagementService
         if (seat == null)
             return (false, null, $"Seat {request.SeatNumber} not found on flight {request.FlightId}.");
 
-        // Check if already booked
         if (seat.Status == SeatStatus.Booked)
             return (false, null, $"Seat {request.SeatNumber} is already booked.");
 
-        // Mark as booked
         seat.Status = SeatStatus.Booked;
         seat.PassengerId = request.PassengerId;
         seat.BookedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
 
-        // Notify FlightService to decrement AvailableSeats
         _ = NotifyFlightServiceAsync(request.FlightId);
 
         return (true, MapToResponse(seat), "Seat booked successfully.");
     }
     
-    // Scoring Seats
-    private static int CalculateComfortScore(Seat seat)
+    private static int CalculateComfortScore(Seat seat, string? preference)
     {
         int score = 0;
+        string seatType = "Middle";
 
-        // Window seat 
+        // score seats by type
         if (seat.Column == "A" || seat.Column == "F")
+        {
             score += 3;
-
-        // Aisle seat 
+            seatType = "Window";
+        }
         else if (seat.Column == "C" || seat.Column == "D")
+        {
             score += 1;
+            seatType = "Aisle";
+        }
 
-        // Front of plane
         if (seat.Row <= 10)
             score += 2;
-
-        // Middle seat 
         else if (seat.Row <= 20)
             score += 1;
+
+        // boost preferred seat
+        if (!string.IsNullOrWhiteSpace(preference) && 
+            seatType.Equals(preference.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            score += 100;
+        }
 
         return score;
     }
@@ -178,7 +170,6 @@ public class SeatManagementService
         }
         catch
         {
-            // RabbitMQ Implementation for future
         }
     }
 
