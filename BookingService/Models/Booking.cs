@@ -14,6 +14,8 @@ public class Booking
     public BookingStatus Status { get; set; } = BookingStatus.Confirmed;
 
     public DateTime BookedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime? CancelledAt { get; set; }
 }
 
 public enum BookingStatus

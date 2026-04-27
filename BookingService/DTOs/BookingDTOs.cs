@@ -4,7 +4,6 @@ public class CreateBookingRequest
 {
     public int FlightId { get; set; }
     public string SeatNumber { get; set; } = string.Empty;
-
 }
 
 public class BookingResponse
@@ -16,6 +15,14 @@ public class BookingResponse
     public string SeatNumber { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime BookedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+}
+
+// used by staff to see all bookings, optionally filtered by flight
+public class AllBookingsResponse
+{
+    public List<BookingResponse> Bookings { get; set; } = new();
+    public int TotalCount { get; set; }
 }
 
 public class SeatSuggestionResponse

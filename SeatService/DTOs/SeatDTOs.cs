@@ -3,7 +3,6 @@ namespace SeatService.DTOs;
 public class GenerateSeatsRequest
 {
     public int FlightId { get; set; }
-    public int TotalSeats { get; set; } 
 }
 
 public class BookSeatRequest
@@ -11,6 +10,12 @@ public class BookSeatRequest
     public int FlightId { get; set; }
     public string SeatNumber { get; set; } = string.Empty; 
     public int PassengerId { get; set; }
+}
+
+public class ReleaseSeatRequest
+{
+    public int FlightId { get; set; }
+    public string SeatNumber { get; set; } = string.Empty;
 }
 
 public class SeatResponse

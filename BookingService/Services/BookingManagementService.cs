@@ -80,6 +80,67 @@ public class BookingManagementService
         return (true, MapToResponse(booking), "Booking confirmed.");
     }
 
+    public async Task<(bool Success, BookingResponse? Booking, string Message)> CancelBookingAsync(
+        string pnr, int passengerId)
+    {
+        var booking = await _db.Bookings
+            .FirstOrDefaultAsync(b => b.PNR == pnr.ToUpper().Trim());
+
+        if (booking == null)
+            return (false, null, $"No booking found with PNR '{pnr}'.");
+
+        // a passenger can only cancel their own booking
+        if (booking.PassengerId != passengerId)
+            return (false, null, "You are not authorised to cancel this booking.");
+
+        if (booking.Status == BookingStatus.Cancelled)
+            return (false, null, "This booking is already cancelled.");
+
+        booking.Status = BookingStatus.Cancelled;
+        booking.CancelledAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        // fire-and-forget: tell SeatService to free the seat
+        // we don't block the response on this call
+        _ = ReleaseSeatAsync(booking.FlightId, booking.SeatNumber);
+
+        return (true, MapToResponse(booking), "Booking cancelled successfully.");
+    }
+
+    // staff only — returns every booking, optionally scoped to one flight
+    public async Task<AllBookingsResponse> GetAllBookingsAsync(int? flightId)
+    {
+        var query = _db.Bookings.AsQueryable();
+
+        if (flightId.HasValue)
+            query = query.Where(b => b.FlightId == flightId.Value);
+
+        var bookings = await query
+            .OrderByDescending(b => b.BookedAt)
+            .ToListAsync();
+
+        return new AllBookingsResponse
+        {
+            Bookings = bookings.Select(MapToResponse).ToList(),
+            TotalCount = bookings.Count
+        };
+    }
+
+    private async Task ReleaseSeatAsync(int flightId, string seatNumber)
+    {
+        try
+        {
+            var seatServiceUrl = _config["ServiceUrls:SeatService"];
+            await _seatClient.PutAsJsonAsync(
+                $"{seatServiceUrl}/seats/release-internal",
+                new { FlightId = flightId, SeatNumber = seatNumber });
+        }
+        catch
+        {
+            // log and move on — seat release failure doesn't break the cancellation
+        }
+    }
+
     public async Task<List<BookingResponse>> GetMyBookingsAsync(int passengerId)
     {
         var bookings = await _db.Bookings
@@ -161,7 +222,8 @@ public class BookingManagementService
         FlightId = booking.FlightId,
         SeatNumber = booking.SeatNumber,
         Status = booking.Status.ToString(),
-        BookedAt = booking.BookedAt
+        BookedAt = booking.BookedAt,
+        CancelledAt = booking.CancelledAt
     };
 }
 

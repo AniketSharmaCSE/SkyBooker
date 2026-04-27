@@ -52,6 +52,15 @@ public class FlightManagementService
         return (true, MapToResponse(flight), "Flight added successfully.");
     }
 
+    public async Task<(bool Success, FlightResponse? Flight, string Message)> GetFlightByIdAsync(int flightId)
+    {
+        var flight = await _db.Flights.FindAsync(flightId);
+        if (flight == null)
+            return (false, null, "Flight not found.");
+
+        return (true, MapToResponse(flight), "Flight found.");
+    }
+
     public async Task<List<FlightResponse>> SearchFlightsAsync(
         string? origin,
         string? destination,
@@ -122,6 +131,7 @@ public class FlightManagementService
         ArrivalTime = flight.ArrivalTime,
         TravelDuration = (flight.ArrivalTime - flight.DepartureTime).ToString(@"h\h\ mm\m"),
         Price = flight.Price,
+        TotalSeats = flight.TotalSeats,
         AvailableSeats = flight.AvailableSeats
     };
 }

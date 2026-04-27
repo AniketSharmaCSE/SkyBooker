@@ -33,6 +33,9 @@ namespace BookingService.Migrations
                     b.Property<DateTime>("BookedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("FlightId")
                         .HasColumnType("int");
 

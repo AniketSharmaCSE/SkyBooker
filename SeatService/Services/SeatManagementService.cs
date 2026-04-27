@@ -31,11 +31,23 @@ public class SeatManagementService
         int seatsGenerated = 0;
         int row = 1;
 
-        while (seatsGenerated < request.TotalSeats)
+        // fetch flight from flight service to get total seats
+        var flightServiceUrl = _config["ServiceUrls:FlightService"];
+        var response = await _httpClient.GetAsync($"{flightServiceUrl}/flights/{request.FlightId}");
+        if (!response.IsSuccessStatusCode)
+            return (false, $"Could not retrieve flight {request.FlightId} details from FlightService.");
+
+        using var flightData = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
+        if (flightData == null)
+            return (false, "Invalid flight data returned from FlightService.");
+
+        int totalSeats = flightData.RootElement.GetProperty("totalSeats").GetInt32();
+
+        while (seatsGenerated < totalSeats)
         {
             foreach (var col in columns)
             {
-                if (seatsGenerated >= request.TotalSeats) break;
+                if (seatsGenerated >= totalSeats) break;
 
                 seats.Add(new Seat
                 {
@@ -101,6 +113,28 @@ public class SeatManagementService
             Reasoning = "Seats ranked by comfort score: window seats score higher, " +
                         "front rows score higher (quicker exit), aisle seats preferred over middle."
         };
+    }
+
+    public async Task<(bool Success, string Message)> ReleaseSeatAsync(int flightId, string seatNumber)
+    {
+        var seat = await _db.Seats
+            .FirstOrDefaultAsync(s =>
+                s.FlightId == flightId &&
+                s.SeatNumber == seatNumber.ToUpper());
+
+        if (seat == null)
+            return (false, $"Seat {seatNumber} not found on flight {flightId}.");
+
+        if (seat.Status == SeatStatus.Available)
+            return (false, $"Seat {seatNumber} is already available.");
+
+        seat.Status = SeatStatus.Available;
+        seat.PassengerId = null;
+        seat.BookedAt = null;
+
+        await _db.SaveChangesAsync();
+
+        return (true, $"Seat {seatNumber} released successfully.");
     }
 
     public async Task<(bool Success, SeatResponse? Seat, string Message)> BookSeatAsync(BookSeatRequest request)

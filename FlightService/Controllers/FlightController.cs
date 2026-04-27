@@ -39,4 +39,38 @@ public class FlightController : ControllerBase
         var flights = await _flightService.SearchFlightsAsync(origin, destination, date);
         return Ok(flights);
     }
+
+    // get flight by id
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetFlight(int id)
+    {
+        var (success, flight, message) = await _flightService.GetFlightByIdAsync(id);
+        if (!success)
+            return NotFound(new { message });
+
+        return Ok(flight);
+    }
+
+    [HttpPut("{id}/decrement-seat")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DecrementSeat(int id)
+    {
+        var (success, message) = await _flightService.DecrementSeatAsync(id);
+        if (!success)
+            return BadRequest(new { message });
+
+        return Ok(new { message });
+    }
+
+    [HttpPut("{id}/increment-seat")]
+    [AllowAnonymous]
+    public async Task<IActionResult> IncrementSeat(int id)
+    {
+        var (success, message) = await _flightService.IncrementSeatAsync(id);
+        if (!success)
+            return BadRequest(new { message });
+
+        return Ok(new { message });
+    }
 }
