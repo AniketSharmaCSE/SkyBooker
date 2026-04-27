@@ -4,6 +4,14 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuthService", "AuthService\AuthService.csproj", "{6CDAB7B3-DE4F-6FF5-06F0-D824F083F1AF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlightService", "FlightService\FlightService.csproj", "{7AEDAB7B3-DE4F-6FF5-06F0-D824F083F2BG}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SeatService", "SeatService\SeatService.csproj", "{8BFDAB7B3-DE4F-6FF5-06F0-D824F083F3CH}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookingService", "BookingService\BookingService.csproj", "{9CGEAB7B3-DE4F-6FF5-06F0-D824F083F4DI}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassengerService", "PassengerService\PassengerService.csproj", "{A1DHAB7B3-DE4F-6FF5-06F0-D824F083F5EJ}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +22,10 @@ Global
 		{6CDAB7B3-DE4F-6FF5-06F0-D824F083F1AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6CDAB7B3-DE4F-6FF5-06F0-D824F083F1AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6CDAB7B3-DE4F-6FF5-06F0-D824F083F1AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1DHAB7B3-DE4F-6FF5-06F0-D824F083F5EJ}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1DHAB7B3-DE4F-6FF5-06F0-D824F083F5EJ}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1DHAB7B3-DE4F-6FF5-06F0-D824F083F5EJ}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1DHAB7B3-DE4F-6FF5-06F0-D824F083F5EJ}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

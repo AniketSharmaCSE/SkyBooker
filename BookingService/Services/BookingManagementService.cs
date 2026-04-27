@@ -10,6 +10,7 @@ public class BookingManagementService
 {
     private readonly BookingDbContext _db;
     private readonly HttpClient _seatClient;
+    private readonly HttpClient _passengerClient;
     private readonly IConfiguration _config;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -21,10 +22,13 @@ public class BookingManagementService
     {
         _db = db;
         _seatClient = httpClientFactory.CreateClient("SeatService");
+        _passengerClient = httpClientFactory.CreateClient("PassengerService");
         _config = config;
         _httpContextAccessor = httpContextAccessor;
 
+        // internal auth using shared key
         _seatClient.DefaultRequestHeaders.Add("X-Internal-Key", config["InternalApi:Key"]);
+        _passengerClient.DefaultRequestHeaders.Add("X-Internal-Key", config["InternalApi:Key"]);
     }
 
     public async Task<(bool Success, BookingResponse? Booking, string Message)> CreateBookingAsync(
@@ -35,6 +39,22 @@ public class BookingManagementService
 
         if (string.IsNullOrWhiteSpace(request.SeatNumber))
             return (false, null, "SeatNumber is required.");
+
+        // check if passenger has a profile before booking
+        var passengerServiceUrl = _config["ServiceUrls:PassengerService"];
+        if (!string.IsNullOrWhiteSpace(passengerServiceUrl))
+        {
+            var profileCheck = await _passengerClient.GetAsync(
+                $"{passengerServiceUrl}/passengers/exists/{passengerId}");
+
+            if (profileCheck.IsSuccessStatusCode)
+            {
+                var checkResult = await profileCheck.Content.ReadFromJsonAsync<PassengerExistsResponse>();
+                if (checkResult != null && !checkResult.Exists)
+                    return (false, null, "Please complete your passenger profile before making a booking.");
+            }
+            // proceed if service is down
+        }
 
         // check for duplicate booking
         var alreadyBooked = await _db.Bookings.AnyAsync(b =>
@@ -101,13 +121,12 @@ public class BookingManagementService
         await _db.SaveChangesAsync();
 
         // fire-and-forget: tell SeatService to free the seat
-        // we don't block the response on this call
         _ = ReleaseSeatAsync(booking.FlightId, booking.SeatNumber);
 
         return (true, MapToResponse(booking), "Booking cancelled successfully.");
     }
 
-    // staff only — returns every booking, optionally scoped to one flight
+    // staff only - returns every booking, optionally scoped to one flight
     public async Task<AllBookingsResponse> GetAllBookingsAsync(int? flightId)
     {
         var query = _db.Bookings.AsQueryable();
@@ -137,7 +156,7 @@ public class BookingManagementService
         }
         catch
         {
-            // log and move on — seat release failure doesn't break the cancellation
+            // log and move on - seat release failure doesn't break the cancellation
         }
     }
 
@@ -180,10 +199,10 @@ public class BookingManagementService
         if (internalResponse == null || !internalResponse.SuggestedSeats.Any())
             return (false, null, "Could not read seat suggestion or no seats available.");
 
-        var seats = internalResponse.SuggestedSeats.Select(topSeat => 
+        var seats = internalResponse.SuggestedSeats.Select(topSeat =>
         {
-            string seatType = topSeat.Column is "A" or "F" ? "Window" 
-                            : topSeat.Column is "C" or "D" ? "Aisle" 
+            string seatType = topSeat.Column is "A" or "F" ? "Window"
+                            : topSeat.Column is "C" or "D" ? "Aisle"
                             : "Middle";
 
             return new SeatSuggestionResponse
@@ -242,4 +261,9 @@ file class InternalSeatResponse
     public string SeatNumber { get; set; } = string.Empty;
     public int FlightId { get; set; }
     public string Column { get; set; } = string.Empty;
+}
+
+file class PassengerExistsResponse
+{
+    public bool Exists { get; set; }
 }

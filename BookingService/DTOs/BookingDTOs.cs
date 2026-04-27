@@ -18,7 +18,6 @@ public class BookingResponse
     public DateTime? CancelledAt { get; set; }
 }
 
-// used by staff to see all bookings, optionally filtered by flight
 public class AllBookingsResponse
 {
     public List<BookingResponse> Bookings { get; set; } = new();

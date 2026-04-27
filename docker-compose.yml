@@ -75,6 +75,24 @@ services:
       - Jwt__Issuer=AuthService
       - Jwt__Audience=AirlineBookingApp
       - ServiceUrls__SeatService=http://seat-service:8080
+      - ServiceUrls__PassengerService=http://passenger-service:8080
+      - InternalApi__Key=SkyBooker_Internal_2024!
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  passenger-service:
+    build: ./PassengerService
+    container_name: airline_passenger
+    ports:
+      - "5004:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlinePassenger;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
+      - Jwt__Issuer=AuthService
+      - Jwt__Audience=AirlineBookingApp
+      - InternalApi__Key=SkyBooker_Internal_2024!
     depends_on:
       sqlserver:
         condition: service_healthy
