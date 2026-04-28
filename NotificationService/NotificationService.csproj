@@ -7,12 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Same packages as AuthService — each service is fully self-contained -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-    <PackageReference Include="StackExchange.Redis" Version="2.7.33" />
   </ItemGroup>
 
 </Project>

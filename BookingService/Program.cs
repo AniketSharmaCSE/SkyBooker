@@ -21,6 +21,7 @@ builder.Services.AddHttpClient("SeatService");
 builder.Services.AddHttpClient("PassengerService");
 
 builder.Services.AddScoped<BookingManagementService>();
+builder.Services.AddScoped<RabbitMQPublisher>();
 
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

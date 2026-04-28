@@ -13,18 +13,21 @@ public class BookingManagementService
     private readonly HttpClient _passengerClient;
     private readonly IConfiguration _config;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly RabbitMQPublisher _publisher;
 
     public BookingManagementService(
         BookingDbContext db,
         IHttpClientFactory httpClientFactory,
         IConfiguration config,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        RabbitMQPublisher publisher)
     {
         _db = db;
         _seatClient = httpClientFactory.CreateClient("SeatService");
         _passengerClient = httpClientFactory.CreateClient("PassengerService");
         _config = config;
         _httpContextAccessor = httpContextAccessor;
+        _publisher = publisher;
 
         // internal auth using shared key
         _seatClient.DefaultRequestHeaders.Add("X-Internal-Key", config["InternalApi:Key"]);
@@ -96,6 +99,7 @@ public class BookingManagementService
 
         _db.Bookings.Add(booking);
         await _db.SaveChangesAsync();
+        await _publisher.PublishBookingCreatedAsync(booking);
 
         return (true, MapToResponse(booking), "Booking confirmed.");
     }

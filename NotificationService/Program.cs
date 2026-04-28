@@ -1,28 +1,21 @@
 using System.Text;
-using FlightService.Data;
-using FlightService.Middleware;
-using FlightService.Services;
+using NotificationService;
+using NotificationService.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-builder.Services.AddDbContext<FlightDbContext>(options =>
+builder.Services.AddDbContext<NotificationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
     ));
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-    ConnectionMultiplexer.Connect(
-        builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379"));
-
-builder.Services.AddScoped<FlightManagementService>();
-builder.Services.AddScoped<RedisService>();
+builder.Services.AddSingleton<RabbitMQConsumer>();
+builder.Services.AddHostedService<Worker>();
 
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -38,7 +31,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-
             RoleClaimType = "role"
         };
     });
@@ -46,14 +38,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Flight Service",
+        Title = "Notification Service",
         Version = "v1",
-        Description = "Manages flights for AirlineBooking"
+        Description = "Handles in-app notifications for AirlineBooking"
     });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -69,31 +60,27 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                    { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
 });
 
-
 var app = builder.Build();
-
-app.UseMiddleware<GlobalExceptionMiddleware>();
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<FlightDbContext>();
-    db.Database.Migrate();
+    var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+    db.Database.EnsureCreated();
 }
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Flight Service v1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Notification Service v1");
         c.RoutePrefix = string.Empty;
     });
 }

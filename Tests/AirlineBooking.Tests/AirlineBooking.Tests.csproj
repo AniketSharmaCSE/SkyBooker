@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\AuthService\AuthService.csproj" />
+    <ProjectReference Include="..\..\BookingService\BookingService.csproj" />
+    <ProjectReference Include="..\..\FlightService\FlightService.csproj" />
+    <ProjectReference Include="..\..\NotificationService\NotificationService.csproj" />
+    <ProjectReference Include="..\..\PassengerService\PassengerService.csproj" />
+    <ProjectReference Include="..\..\SeatService\SeatService.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -8,10 +8,12 @@ namespace FlightService.Services;
 public class FlightManagementService
 {
     private readonly FlightDbContext _db;
+    private readonly RedisService _redis;
 
-    public FlightManagementService(FlightDbContext db)
+    public FlightManagementService(FlightDbContext db, RedisService redis)
     {
         _db = db;
+        _redis = redis;
     }
 
     public async Task<(bool Success, FlightResponse? Flight, string Message)> AddFlightAsync(AddFlightRequest request)
@@ -48,6 +50,7 @@ public class FlightManagementService
 
         _db.Flights.Add(flight);
         await _db.SaveChangesAsync();
+        await _redis.InvalidateSearchCacheAsync();
 
         return (true, MapToResponse(flight), "Flight added successfully.");
     }
@@ -66,6 +69,11 @@ public class FlightManagementService
         string? destination,
         DateTime? date)
     {
+        var cacheKey = _redis.BuildSearchKey(origin, destination, date);
+        var cachedFlights = await _redis.GetAsync<List<FlightResponse>>(cacheKey);
+        if (cachedFlights != null)
+            return cachedFlights;
+
         var query = _db.Flights.AsQueryable();
 
         // case insensitive search
@@ -88,7 +96,10 @@ public class FlightManagementService
             .OrderBy(f => f.DepartureTime);
 
         var flights = await query.ToListAsync();
-        return flights.Select(MapToResponse).ToList();
+        var result = flights.Select(MapToResponse).ToList();
+
+        await _redis.SetAsync(cacheKey, result);
+        return result;
     }
 
     public async Task<(bool Success, string Message)> DecrementSeatAsync(int flightId)
@@ -102,6 +113,7 @@ public class FlightManagementService
 
         flight.AvailableSeats--;
         await _db.SaveChangesAsync();
+        await _redis.InvalidateSearchCacheAsync();
 
         return (true, "Seat decremented.");
     }
@@ -117,6 +129,7 @@ public class FlightManagementService
 
         flight.AvailableSeats++;
         await _db.SaveChangesAsync();
+        await _redis.InvalidateSearchCacheAsync();
 
         return (true, "Seat incremented.");
     }
@@ -129,9 +142,15 @@ public class FlightManagementService
         Destination = flight.Destination,
         DepartureTime = flight.DepartureTime,
         ArrivalTime = flight.ArrivalTime,
-        TravelDuration = (flight.ArrivalTime - flight.DepartureTime).ToString(@"h\h\ mm\m"),
+        TravelDuration = FormatTravelDuration(flight.ArrivalTime - flight.DepartureTime),
         Price = flight.Price,
         TotalSeats = flight.TotalSeats,
         AvailableSeats = flight.AvailableSeats
     };
+
+    private static string FormatTravelDuration(TimeSpan duration)
+    {
+        var totalHours = (int)duration.TotalHours;
+        return $"{totalHours}h {duration.Minutes:00}m";
+    }
 }
