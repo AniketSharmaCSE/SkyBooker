@@ -33,6 +33,30 @@ services:
       - "5672:5672"
       - "15672:15672"
 
+  api-gateway:
+    build: ./ApiGateway
+    container_name: airline_gateway
+    ports:
+      - "5006:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
+      - Jwt__Issuer=AuthService
+      - Jwt__Audience=AirlineBookingApp
+    depends_on:
+      auth-service:
+        condition: service_started
+      flight-service:
+        condition: service_started
+      seat-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+      passenger-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+
   auth-service:
     build: ./AuthService
     container_name: airline_auth
