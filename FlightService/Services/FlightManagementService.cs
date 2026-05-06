@@ -30,6 +30,7 @@ public class FlightManagementService
         if (request.DepartureTime >= request.ArrivalTime)
             return (false, null, "Departure time must be before arrival time.");
 
+
         if (request.Price <= 0)
             return (false, null, "Price must be greater than 0.");
 
@@ -44,6 +45,8 @@ public class FlightManagementService
             DepartureTime = request.DepartureTime,
             ArrivalTime = request.ArrivalTime,
             Price = request.Price,
+            Airline = string.IsNullOrWhiteSpace(request.Airline) ? "SkyBooker Express" : request.Airline.Trim(),
+            ComfortPremium = request.ComfortPremium >= 0 ? request.ComfortPremium : 100,
             TotalSeats = request.TotalSeats,
             AvailableSeats = request.TotalSeats
         };
@@ -145,7 +148,9 @@ public class FlightManagementService
         TravelDuration = FormatTravelDuration(flight.ArrivalTime - flight.DepartureTime),
         Price = flight.Price,
         TotalSeats = flight.TotalSeats,
-        AvailableSeats = flight.AvailableSeats
+        AvailableSeats = flight.AvailableSeats,
+        Airline = flight.Airline,
+        ComfortPremium = flight.ComfortPremium
     };
 
     private static string FormatTravelDuration(TimeSpan duration)

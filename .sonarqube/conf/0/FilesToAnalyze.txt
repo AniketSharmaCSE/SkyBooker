@@ -1,0 +1,17 @@
+﻿C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Controllers\AuthController.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Data\AuthDbContext.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\DTOs\AuthDTOs.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Middleware\GlobalExceptionMiddleware.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Migrations\20260421060412_InitialCreate.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Migrations\20260421060412_InitialCreate.Designer.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Migrations\AuthDbContextModelSnapshot.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Models\User.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Program.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Services\AuthService.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\obj\Debug\net8.0\AuthService.GlobalUsings.g.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\obj\Debug\net8.0\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\obj\Debug\net8.0\AuthService.AssemblyInfo.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\obj\Debug\net8.0\AuthService.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\appsettings.json
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\.dockerignore
+C:\Users\anshu\OneDrive\Desktop\Frontend antigravity\UC1\AuthService\Dockerfile

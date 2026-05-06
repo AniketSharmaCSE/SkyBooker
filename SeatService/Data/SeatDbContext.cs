@@ -16,11 +16,19 @@ public class SeatDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<Seat>()
+            .Property(s => s.FlightId)
+            .HasMaxLength(64);
+
+        modelBuilder.Entity<Seat>()
             .Property(s => s.SeatNumber)
             .HasMaxLength(5);
 
         modelBuilder.Entity<Seat>()
             .Property(s => s.Column)
             .HasMaxLength(2);
+
+        modelBuilder.Entity<Seat>()
+            .Property(s => s.CabinClass)
+            .HasConversion<int>();
     }
 }

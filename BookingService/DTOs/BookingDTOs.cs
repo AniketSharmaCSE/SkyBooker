@@ -26,7 +26,21 @@ public class AllBookingsResponse
 
 public class SeatSuggestionResponse
 {
+    public int Id { get; set; }
+    public string FlightId { get; set; } = string.Empty;
     public string SeatNumber { get; set; } = string.Empty;
+    public int Row { get; set; }
+    public string Column { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
     public string SeatType { get; set; } = string.Empty;
-    public int FlightId { get; set; }
+    public string CabinClass { get; set; } = string.Empty;
+    public decimal ClassMultiplier { get; set; }
+    public int ComfortScore { get; set; }
+    public decimal PriceModifier { get; set; }
+}
+
+public class SeatSuggestionResult
+{
+    public List<SeatSuggestionResponse> SuggestedSeats { get; set; } = new();
+    public string Reasoning { get; set; } = string.Empty;
 }

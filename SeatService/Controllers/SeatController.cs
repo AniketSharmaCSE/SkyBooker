@@ -31,7 +31,7 @@ public class SeatController : ControllerBase
     // view seat map
     [HttpGet("{flightId}")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetSeats(int flightId)
+    public async Task<IActionResult> GetSeats(string flightId)
     {
         var seats = await _seatService.GetSeatMapAsync(flightId);
         return Ok(seats);
@@ -68,7 +68,7 @@ public class SeatController : ControllerBase
     }
 
     [HttpGet("suggest-internal/{flightId}")]
-    public async Task<IActionResult> SuggestSeatInternal(int flightId, [FromQuery] string? preference)
+    public async Task<IActionResult> SuggestSeatInternal(string flightId, [FromQuery] string? preference)
     {
         var internalKey = Request.Headers["X-Internal-Key"].ToString();
         if (internalKey != "SkyBooker_Internal_2024!")
@@ -80,4 +80,21 @@ public class SeatController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpPost("toggle-block")]
+    [Authorize(Roles = "STAFF")]
+    public async Task<IActionResult> ToggleBlock([FromBody] ToggleBlockRequest request)
+    {
+        var (success, seat, message) = await _seatService.ToggleBlockSeatAsync(request.FlightId, request.SeatNumber);
+        if (!success)
+            return BadRequest(new { message });
+
+        return Ok(new { message, seat });
+    }
+}
+
+public class ToggleBlockRequest
+{
+    public string FlightId { get; set; } = string.Empty;
+    public string SeatNumber { get; set; } = string.Empty;
 }

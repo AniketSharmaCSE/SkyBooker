@@ -1,0 +1,374 @@
+{
+  "$schema": "http://json.schemastore.org/sarif-1.0.0",
+  "version": "1.0.0",
+  "runs": [
+    {
+      "tool": {
+        "name": "Microsoft (R) Visual C# Compiler",
+        "version": "4.11.0.0",
+        "fileVersion": "4.11.0-3.24554.2 (bc1c3011)",
+        "semanticVersion": "4.11.0",
+        "language": "en-US"
+      },
+      "results": [
+        {
+          "ruleId": "CS8618",
+          "level": "warning",
+          "message": "Non-nullable property 'Passengers' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable.",
+          "suppressionStates": [
+            "suppressedInSource"
+          ],
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Data/PassengerDbContext.cs",
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 12,
+                  "endLine": 8,
+                  "endColumn": 30
+                }
+              }
+            }
+          ],
+          "relatedLocations": [
+            {
+              "physicalLocation": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Data/PassengerDbContext.cs",
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 36,
+                  "endLine": 10,
+                  "endColumn": 46
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S2068",
+          "level": "warning",
+          "message": "\"password\" detected here, make sure this is not a hard-coded credential.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/appsettings.json",
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 27,
+                  "endLine": 3,
+                  "endColumn": 143
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S6580",
+          "level": "warning",
+          "message": "Use a format provider when parsing date and time.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Services/PassengerManagementService.cs",
+                "region": {
+                  "startLine": 31,
+                  "startColumn": 14,
+                  "endLine": 31,
+                  "endColumn": 65
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S1192",
+          "level": "warning",
+          "message": "Define a constant instead of using this literal 'Passengers' 4 times.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Migrations/20260427000001_InitialCreate.cs",
+                "region": {
+                  "startLine": 15,
+                  "startColumn": 23,
+                  "endLine": 15,
+                  "endColumn": 35
+                }
+              }
+            }
+          ],
+          "relatedLocations": [
+            {
+              "physicalLocation": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Migrations/20260427000001_InitialCreate.cs",
+                "region": {
+                  "startLine": 37,
+                  "startColumn": 24,
+                  "endLine": 37,
+                  "endColumn": 36
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Migrations/20260427000001_InitialCreate.cs",
+                "region": {
+                  "startLine": 43,
+                  "startColumn": 24,
+                  "endLine": 43,
+                  "endColumn": 36
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Migrations/20260427000001_InitialCreate.cs",
+                "region": {
+                  "startLine": 52,
+                  "startColumn": 23,
+                  "endLine": 52,
+                  "endColumn": 35
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1,
+            "customProperties": {
+              "0": null,
+              "1": null,
+              "2": null
+            }
+          }
+        },
+        {
+          "ruleId": "S1192",
+          "level": "warning",
+          "message": "Define a constant instead of using this literal 'nvarchar(max)' 4 times.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Migrations/20260427000001_InitialCreate.cs",
+                "region": {
+                  "startLine": 21,
+                  "startColumn": 59,
+                  "endLine": 21,
+                  "endColumn": 74
+                }
+              }
+            }
+          ],
+          "relatedLocations": [
+            {
+              "physicalLocation": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Migrations/20260427000001_InitialCreate.cs",
+                "region": {
+                  "startLine": 22,
+                  "startColumn": 56,
+                  "endLine": 22,
+                  "endColumn": 71
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Migrations/20260427000001_InitialCreate.cs",
+                "region": {
+                  "startLine": 23,
+                  "startColumn": 62,
+                  "endLine": 23,
+                  "endColumn": 77
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Migrations/20260427000001_InitialCreate.cs",
+                "region": {
+                  "startLine": 26,
+                  "startColumn": 62,
+                  "endLine": 26,
+                  "endColumn": 77
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1,
+            "customProperties": {
+              "0": null,
+              "1": null,
+              "2": null
+            }
+          }
+        },
+        {
+          "ruleId": "S6932",
+          "level": "warning",
+          "message": "Use model binding instead of accessing the raw request data",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Controllers/PassengerController.cs",
+                "region": {
+                  "startLine": 81,
+                  "startColumn": 27,
+                  "endLine": 81,
+                  "endColumn": 42
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S6966",
+          "level": "warning",
+          "message": "Await MigrateAsync instead.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Program.cs",
+                "region": {
+                  "startLine": 79,
+                  "startColumn": 5,
+                  "endLine": 79,
+                  "endColumn": 26
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "S6966",
+          "level": "warning",
+          "message": "Await RunAsync instead.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///C:/Users/anshu/OneDrive/Desktop/Frontend%20antigravity/UC1/PassengerService/Program.cs",
+                "region": {
+                  "startLine": 96,
+                  "startColumn": 1,
+                  "endLine": 96,
+                  "endColumn": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        }
+      ],
+      "rules": {
+        "CS8618": {
+          "id": "CS8618",
+          "shortDescription": "Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.",
+          "defaultLevel": "warning",
+          "helpUri": "https://msdn.microsoft.com/query/roslyn.query?appId=roslyn&k=k(CS8618)",
+          "properties": {
+            "category": "Compiler",
+            "isEnabledByDefault": true,
+            "tags": [
+              "Compiler",
+              "Telemetry"
+            ]
+          }
+        },
+        "S1192": {
+          "id": "S1192",
+          "shortDescription": "String literals should not be duplicated",
+          "fullDescription": "Duplicated string literals make the process of refactoring complex and error-prone, as any change would need to be propagated on all occurrences.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Minor Code Smell",
+            "isEnabledByDefault": false,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "SonarWay"
+            ]
+          }
+        },
+        "S2068": {
+          "id": "S2068",
+          "shortDescription": "Credentials should not be hard-coded",
+          "fullDescription": "Hard-coding credentials in source code or binaries makes it easy for attackers to extract sensitive information, especially in distributed or open-source applications. This practice exposes your application to significant security risks.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Major Vulnerability",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "SonarWay"
+            ]
+          }
+        },
+        "S6580": {
+          "id": "S6580",
+          "shortDescription": "Use a format provider when parsing date and time",
+          "fullDescription": "When converting a string representation of a date and time to a DateTime object or any other temporal type with one of the available system parsing methods, you should always provide an IFormatProvider parameter.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Major Code Smell",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "TestSourceScope",
+              "SonarWay"
+            ]
+          }
+        },
+        "S6932": {
+          "id": "S6932",
+          "shortDescription": "Use model binding instead of reading raw request data",
+          "fullDescription": "The HttpRequest class provides access to the raw request data through the QueryString, Headers, and Forms properties. However, whenever possible it is recommended to use model binding instead of directly accessing the input data.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Major Code Smell",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "SonarWay"
+            ]
+          }
+        },
+        "S6966": {
+          "id": "S6966",
+          "shortDescription": "Awaitable method should be used",
+          "fullDescription": "In an async method, any blocking operations should be avoided.",
+          "defaultLevel": "warning",
+          "properties": {
+            "category": "Major Code Smell",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "MainSourceScope",
+              "TestSourceScope",
+              "SonarWay"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

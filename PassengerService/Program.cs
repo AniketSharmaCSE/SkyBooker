@@ -10,9 +10,9 @@ using PassengerService.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<PassengerDbContext>(options =>
-    options.UseSqlServer(
+    options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
+        npgsql => npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
     ));
 
 builder.Services.AddScoped<PassengerManagementService>();

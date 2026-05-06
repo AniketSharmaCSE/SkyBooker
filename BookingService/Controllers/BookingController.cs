@@ -21,11 +21,11 @@ public class BookingController : ControllerBase
     [Authorize(Roles = "PASSENGER")]
     public async Task<IActionResult> SuggestSeat(int flightId, [FromQuery] string? preference)
     {
-        var (success, seats, message) = await _bookingService.SuggestSeatAsync(flightId, preference);
+        var (success, result, message) = await _bookingService.SuggestSeatAsync(flightId, preference);
         if (!success)
             return NotFound(new { message });
 
-        return Ok(seats);
+        return Ok(result);
     }
 
     [HttpPost]

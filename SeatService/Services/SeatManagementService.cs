@@ -21,6 +21,13 @@ public class SeatManagementService
 
     public async Task<(bool Success, string Message)> GenerateSeatsAsync(GenerateSeatsRequest request)
     {
+        request.FlightId = request.FlightId?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(request.FlightId))
+            return (false, "FlightId is required.");
+
+        if (!IsValidFlightId(request.FlightId))
+            return (false, "FlightId must be a numeric flight ID.");
+
         var alreadyExists = await _db.Seats.AnyAsync(s => s.FlightId == request.FlightId);
         if (alreadyExists)
             return (false, $"Seats already generated for flight {request.FlightId}.");
@@ -42,6 +49,30 @@ public class SeatManagementService
             return (false, "Invalid flight data returned from FlightService.");
 
         int totalSeats = flightData.RootElement.GetProperty("totalSeats").GetInt32();
+        if ((request.BusinessSeats ?? 0) < 0 ||
+            (request.PremiumEconomySeats ?? 0) < 0 ||
+            (request.EconomySeats ?? 0) < 0)
+        {
+            return (false, "Cabin class seat counts cannot be negative.");
+        }
+
+        var customSeatCounts = BuildCustomSeatCounts(request, totalSeats);
+        if (customSeatCounts != null)
+        {
+            var customTotalSeats = customSeatCounts.Sum(c => c.Count);
+            if (customTotalSeats <= 0)
+                return (false, "At least one cabin class must have seats.");
+
+            if (customTotalSeats != totalSeats)
+                return (false, $"Cabin class seat counts must add up to flight total seats ({totalSeats}).");
+
+            totalSeats = customTotalSeats;
+        }
+
+        var totalRows = (int)Math.Ceiling(totalSeats / (decimal)columns.Length);
+        var cabinClassPlan = BuildCabinClassPlan(totalSeats, totalRows, customSeatCounts);
+
+        var blockedSeats = request.BlockedSeats?.Select(s => s.ToUpper().Trim()).ToHashSet() ?? new HashSet<string>();
 
         while (seatsGenerated < totalSeats)
         {
@@ -49,13 +80,15 @@ public class SeatManagementService
             {
                 if (seatsGenerated >= totalSeats) break;
 
+                var seatNumber = $"{row}{col}";
                 seats.Add(new Seat
                 {
                     FlightId = request.FlightId,
-                    SeatNumber = $"{row}{col}",
+                    SeatNumber = seatNumber,
                     Row = row,
                     Column = col,
-                    Status = SeatStatus.Available
+                    CabinClass = cabinClassPlan[seatsGenerated],
+                    Status = blockedSeats.Contains(seatNumber) ? SeatStatus.Blocked : SeatStatus.Available
                 });
 
                 seatsGenerated++;
@@ -69,19 +102,23 @@ public class SeatManagementService
         return (true, $"{seats.Count} seats generated for flight {request.FlightId}.");
     }
 
-  public async Task<List<SeatResponse>> GetSeatMapAsync(int flightId)
+    public async Task<List<SeatResponse>> GetSeatMapAsync(string flightId)
     {
+        flightId = flightId.Trim();
         var seats = await _db.Seats
             .Where(s => s.FlightId == flightId)
             .OrderBy(s => s.Row)
             .ThenBy(s => s.Column)
             .ToListAsync();
 
-        return seats.Select(s => MapToResponse(s)).ToList();
+        var flightData = await GetFlightDataAsync(flightId);
+
+        return seats.Select(s => MapToResponse(s, BuildSeatProfile(s, flightData))).ToList();
     }
 
-    public async Task<SeatSuggestionResponse> SuggestSeatsAsync(int flightId, string? preference)
+    public async Task<SeatSuggestionResponse> SuggestSeatsAsync(string flightId, string? preference)
     {
+        flightId = flightId.Trim();
         var availableSeats = await _db.Seats
             .Where(s => s.FlightId == flightId && s.Status == SeatStatus.Available)
             .ToListAsync();
@@ -95,14 +132,21 @@ public class SeatManagementService
             };
         }
 
+        var flightData = await GetFlightDataAsync(flightId);
+
         var scored = availableSeats
-            .Select(s => new { Seat = s, Score = CalculateComfortScore(s, preference) })
+            .Select(s =>
+            {
+                var profile = BuildSeatProfile(s, flightData);
+                var score = ApplyPreferenceBoost(profile.ComfortScore, profile.SeatType, preference);
+                return new { Seat = s, Profile = profile, Score = score };
+            })
             .OrderByDescending(x => x.Score)
             .ToList();
 
         var suggestions = scored.Select(x =>
         {
-            var response = MapToResponse(x.Seat);
+            var response = MapToResponse(x.Seat, x.Profile);
             response.ComfortScore = x.Score;
             return response;
         }).ToList();
@@ -110,13 +154,13 @@ public class SeatManagementService
         return new SeatSuggestionResponse
         {
             SuggestedSeats = suggestions,
-            Reasoning = "Seats ranked by comfort score: window seats score higher, " +
-                        "front rows score higher (quicker exit), aisle seats preferred over middle."
+            Reasoning = "Seats ranked by comfort score, preferred seat type, row position, and flight-specific pricing rules."
         };
     }
 
-    public async Task<(bool Success, string Message)> ReleaseSeatAsync(int flightId, string seatNumber)
+    public async Task<(bool Success, string Message)> ReleaseSeatAsync(string flightId, string seatNumber)
     {
+        flightId = flightId.Trim();
         var seat = await _db.Seats
             .FirstOrDefaultAsync(s =>
                 s.FlightId == flightId &&
@@ -139,6 +183,7 @@ public class SeatManagementService
 
     public async Task<(bool Success, SeatResponse? Seat, string Message)> BookSeatAsync(BookSeatRequest request)
     {
+        request.FlightId = request.FlightId?.Trim() ?? string.Empty;
         var seat = await _db.Seats
             .FirstOrDefaultAsync(s =>
                 s.FlightId == request.FlightId &&
@@ -150,6 +195,9 @@ public class SeatManagementService
         if (seat.Status == SeatStatus.Booked)
             return (false, null, $"Seat {request.SeatNumber} is already booked.");
 
+        if (seat.Status == SeatStatus.Blocked)
+            return (false, null, $"Seat {request.SeatNumber} is currently blocked by staff.");
+
         seat.Status = SeatStatus.Booked;
         seat.PassengerId = request.PassengerId;
         seat.BookedAt = DateTime.UtcNow;
@@ -158,42 +206,216 @@ public class SeatManagementService
 
         _ = NotifyFlightServiceAsync(request.FlightId);
 
-        return (true, MapToResponse(seat), "Seat booked successfully.");
+        var flightData = await GetFlightDataAsync(request.FlightId);
+
+        return (true, MapToResponse(seat, BuildSeatProfile(seat, flightData)), "Seat booked successfully.");
     }
-    
-    private static int CalculateComfortScore(Seat seat, string? preference)
+
+    public async Task<(bool Success, SeatResponse? Seat, string Message)> ToggleBlockSeatAsync(string flightId, string seatNumber)
     {
-        int score = 0;
-        string seatType = "Middle";
+        flightId = flightId.Trim();
+        var seat = await _db.Seats
+            .FirstOrDefaultAsync(s =>
+                s.FlightId == flightId &&
+                s.SeatNumber == seatNumber.ToUpper());
 
-        // score seats by type
-        if (seat.Column == "A" || seat.Column == "F")
+        if (seat == null)
+            return (false, null, $"Seat {seatNumber} not found on flight {flightId}.");
+
+        if (seat.Status == SeatStatus.Booked)
+            return (false, null, $"Seat {seatNumber} is booked and cannot be blocked.");
+
+        if (seat.Status == SeatStatus.Blocked)
         {
-            score += 3;
-            seatType = "Window";
+            seat.Status = SeatStatus.Available;
+            await _db.SaveChangesAsync();
+            var profile = BuildSeatProfile(seat, await GetFlightDataAsync(flightId));
+            return (true, MapToResponse(seat, profile), $"Seat {seatNumber} unblocked.");
         }
-        else if (seat.Column == "C" || seat.Column == "D")
+        else
         {
-            score += 1;
-            seatType = "Aisle";
+            seat.Status = SeatStatus.Blocked;
+            await _db.SaveChangesAsync();
+            var profile = BuildSeatProfile(seat, await GetFlightDataAsync(flightId));
+            return (true, MapToResponse(seat, profile), $"Seat {seatNumber} blocked successfully.");
+        }
+    }
+
+    private sealed record SeatPricingProfile(
+        string SeatType,
+        string CabinClass,
+        int ComfortScore,
+        decimal PriceModifier,
+        decimal ClassMultiplier);
+
+    private sealed record SeatRule(string SeatType, int ComfortPoints, decimal PriceModifier);
+
+    private sealed record RowRule(int MinRow, int MaxRow, int ComfortPoints, decimal PriceModifier);
+
+    private sealed record CabinClassRule(string Label, decimal CostMultiplier, int ComfortPoints);
+
+    private static readonly Dictionary<string, SeatRule> ColumnRules = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "A", new SeatRule("Window", 4, 300m) },
+        { "B", new SeatRule("Middle", 1, 0m) },
+        { "C", new SeatRule("Aisle", 4, 300m) },
+        { "D", new SeatRule("Aisle", 4, 300m) },
+        { "E", new SeatRule("Middle", 1, 0m) },
+        { "F", new SeatRule("Window", 4, 300m) }
+    };
+
+    private static readonly List<RowRule> RowRules = new()
+    {
+        new(1, 10, 2, 200m),
+        new(11, 20, 1, 100m)
+    };
+
+    private static readonly Dictionary<CabinClass, CabinClassRule> CabinClassRules = new()
+    {
+        { CabinClass.Economy, new CabinClassRule("Economy", 1.00m, 0) },
+        { CabinClass.PremiumEconomy, new CabinClassRule("Premium Economy", 1.35m, 2) },
+        { CabinClass.Business, new CabinClassRule("Business", 2.00m, 4) }
+    };
+
+    private static CabinClass ResolveCabinClass(int row, int totalRows)
+    {
+        var businessRows = Math.Max(1, (int)Math.Ceiling(totalRows * 0.10m));
+        var premiumEconomyRows = Math.Max(1, (int)Math.Ceiling(totalRows * 0.20m));
+
+        if (row <= businessRows)
+            return CabinClass.Business;
+
+        if (row <= businessRows + premiumEconomyRows)
+            return CabinClass.PremiumEconomy;
+
+        return CabinClass.Economy;
+    }
+
+    private static List<(CabinClass CabinClass, int Count)>? BuildCustomSeatCounts(GenerateSeatsRequest request, int totalSeats)
+    {
+        if (request.BusinessSeats == null && request.PremiumEconomySeats == null && request.EconomySeats == null)
+            return null;
+
+        var business = request.BusinessSeats ?? 0;
+        var premium = request.PremiumEconomySeats ?? 0;
+        var economy = request.EconomySeats ?? 0;
+        var specifiedSum = business + premium + economy;
+
+        if (specifiedSum < totalSeats)
+        {
+            if (request.EconomySeats == null) economy = totalSeats - specifiedSum;
+            else if (request.PremiumEconomySeats == null) premium = totalSeats - specifiedSum;
+            else if (request.BusinessSeats == null) business = totalSeats - specifiedSum;
         }
 
-        if (seat.Row <= 10)
-            score += 2;
-        else if (seat.Row <= 20)
-            score += 1;
+        return new List<(CabinClass CabinClass, int Count)>
+        {
+            (CabinClass.Business, business),
+            (CabinClass.PremiumEconomy, premium),
+            (CabinClass.Economy, economy)
+        };
+    }
 
-        // boost preferred seat
-        if (!string.IsNullOrWhiteSpace(preference) && 
+    private static bool IsValidFlightId(string flightId)
+    {
+        return !string.IsNullOrWhiteSpace(flightId);
+    }
+
+    private static List<CabinClass> BuildCabinClassPlan(
+        int totalSeats,
+        int totalRows,
+        List<(CabinClass CabinClass, int Count)>? customSeatCounts)
+    {
+        if (customSeatCounts != null)
+        {
+            return customSeatCounts
+                .SelectMany(c => Enumerable.Repeat(c.CabinClass, c.Count))
+                .ToList();
+        }
+
+        return Enumerable.Range(0, totalSeats)
+            .Select(index => ResolveCabinClass((index / 6) + 1, totalRows))
+            .ToList();
+    }
+
+    private static SeatPricingProfile BuildSeatProfile(Seat seat, System.Text.Json.JsonElement? flightData)
+    {
+        var columnRule = ColumnRules.GetValueOrDefault(seat.Column, new SeatRule("Middle", 1, 0m));
+        var cabinClassRule = CabinClassRules.GetValueOrDefault(
+            seat.CabinClass,
+            CabinClassRules[CabinClass.Economy]);
+        var comfortScore = columnRule.ComfortPoints;
+        var priceModifier = columnRule.PriceModifier;
+
+        var rowRule = RowRules.FirstOrDefault(r => seat.Row >= r.MinRow && seat.Row <= r.MaxRow);
+        if (rowRule is not null)
+        {
+            comfortScore += rowRule.ComfortPoints;
+            priceModifier += rowRule.PriceModifier;
+        }
+
+        priceModifier += GetFlightRulePriceModifier(columnRule, flightData);
+        comfortScore += cabinClassRule.ComfortPoints;
+
+        return new SeatPricingProfile(
+            columnRule.SeatType,
+            cabinClassRule.Label,
+            Math.Clamp(comfortScore, 0, 10),
+            Math.Max(0m, priceModifier),
+            cabinClassRule.CostMultiplier);
+    }
+
+    private static int ApplyPreferenceBoost(int comfortScore, string seatType, string? preference)
+    {
+        if (!string.IsNullOrWhiteSpace(preference) &&
             seatType.Equals(preference.Trim(), StringComparison.OrdinalIgnoreCase))
         {
-            score += 100;
+            return comfortScore + 100;
         }
 
-        return score;
+        return comfortScore;
     }
 
-    private async Task NotifyFlightServiceAsync(int flightId)
+    private static decimal GetFlightRulePriceModifier(SeatRule seatRule, System.Text.Json.JsonElement? flightData)
+    {
+        if (flightData.HasValue &&
+            seatRule.SeatType.Equals("Window", StringComparison.OrdinalIgnoreCase) &&
+            IsNightFlight(flightData.Value))
+        {
+            return -200m;
+        }
+
+        return 0m;
+    }
+
+    private static bool IsNightFlight(System.Text.Json.JsonElement flightData)
+    {
+        if (flightData.TryGetProperty("departureTime", out var timeProp) && DateTime.TryParse(timeProp.GetString(), out var time))
+        {
+            return time.Hour >= 22 || time.Hour <= 4;
+        }
+        return false;
+    }
+
+    private async Task<System.Text.Json.JsonElement?> GetFlightDataAsync(string flightId)
+    {
+        try
+        {
+            var flightServiceUrl = _config["ServiceUrls:FlightService"];
+            var response = await _httpClient.GetAsync($"{flightServiceUrl}/flights/{flightId}");
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            using var flightData = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
+            return flightData?.RootElement.Clone();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task NotifyFlightServiceAsync(string flightId)
     {
         try
         {
@@ -207,13 +429,18 @@ public class SeatManagementService
         }
     }
 
-    private static SeatResponse MapToResponse(Seat seat) => new()
+    private static SeatResponse MapToResponse(Seat seat, SeatPricingProfile profile) => new()
     {
         Id = seat.Id,
         FlightId = seat.FlightId,
         SeatNumber = seat.SeatNumber,
         Row = seat.Row,
         Column = seat.Column,
-        Status = seat.Status.ToString()
+        Status = seat.Status.ToString(),
+        CabinClass = profile.CabinClass,
+        ClassMultiplier = profile.ClassMultiplier,
+        SeatType = profile.SeatType,
+        ComfortScore = profile.ComfortScore,
+        PriceModifier = profile.PriceModifier
     };
 }

@@ -2,6 +2,9 @@ using BookingService.Data;
 using BookingService.DTOs;
 using BookingService.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Net.Http.Json;
 
 namespace BookingService.Services;
@@ -59,14 +62,6 @@ public class BookingManagementService
             // proceed if service is down
         }
 
-        // check for duplicate booking
-        var alreadyBooked = await _db.Bookings.AnyAsync(b =>
-            b.PassengerId == passengerId &&
-            b.FlightId == request.FlightId &&
-            b.Status == BookingStatus.Confirmed);
-
-        if (alreadyBooked)
-            return (false, null, "You already have a confirmed booking on this flight.");
 
         var seatServiceUrl = _config["ServiceUrls:SeatService"];
         // call seat service
@@ -185,14 +180,14 @@ public class BookingManagementService
         return (true, MapToResponse(booking), "Booking found.");
     }
 
-    public async Task<(bool Success, List<SeatSuggestionResponse>? Seats, string Message)> SuggestSeatAsync(
+    public async Task<(bool Success, SeatSuggestionResult? Result, string Message)> SuggestSeatAsync(
         int flightId, string? preference)
     {
         var seatServiceUrl = _config["ServiceUrls:SeatService"];
 
         var url = $"{seatServiceUrl}/seats/suggest-internal/{flightId}";
         if (!string.IsNullOrWhiteSpace(preference))
-            url += $"?preference={preference}";
+            url += $"?preference={Uri.EscapeDataString(preference.Trim())}";
 
         var response = await _seatClient.GetAsync(url);
 
@@ -205,19 +200,27 @@ public class BookingManagementService
 
         var seats = internalResponse.SuggestedSeats.Select(topSeat =>
         {
-            string seatType = topSeat.Column is "A" or "F" ? "Window"
-                            : topSeat.Column is "C" or "D" ? "Aisle"
-                            : "Middle";
-
             return new SeatSuggestionResponse
             {
-                SeatNumber = topSeat.SeatNumber,
+                Id = topSeat.Id,
                 FlightId = topSeat.FlightId,
-                SeatType = seatType
+                SeatNumber = topSeat.SeatNumber,
+                Row = topSeat.Row,
+                Column = topSeat.Column,
+                Status = topSeat.Status,
+                SeatType = topSeat.SeatType,
+                CabinClass = topSeat.CabinClass,
+                ClassMultiplier = topSeat.ClassMultiplier,
+                ComfortScore = topSeat.ComfortScore,
+                PriceModifier = topSeat.PriceModifier
             };
         }).ToList();
 
-        return (true, seats, "Seats suggested.");
+        return (true, new SeatSuggestionResult
+        {
+            SuggestedSeats = seats,
+            Reasoning = internalResponse.Reasoning
+        }, "Seats suggested.");
     }
 
     private async Task<string> GenerateUniquePnrAsync()
@@ -258,13 +261,43 @@ file class SeatErrorResponse
 file class InternalSeatSuggestionResponse
 {
     public List<InternalSeatResponse> SuggestedSeats { get; set; } = new();
+    public string Reasoning { get; set; } = string.Empty;
 }
 
 file class InternalSeatResponse
 {
+    public int Id { get; set; }
     public string SeatNumber { get; set; } = string.Empty;
-    public int FlightId { get; set; }
+    [JsonConverter(typeof(FlexibleStringJsonConverter))]
+    public string FlightId { get; set; } = string.Empty;
+    public int Row { get; set; }
     public string Column { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string SeatType { get; set; } = string.Empty;
+    public string CabinClass { get; set; } = string.Empty;
+    public decimal ClassMultiplier { get; set; }
+    public int ComfortScore { get; set; }
+    public decimal PriceModifier { get; set; }
+}
+
+file class FlexibleStringJsonConverter : JsonConverter<string>
+{
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return reader.TokenType switch
+        {
+            JsonTokenType.String => reader.GetString() ?? string.Empty,
+            JsonTokenType.Number => reader.TryGetInt64(out var number)
+                ? number.ToString(CultureInfo.InvariantCulture)
+                : reader.GetDouble().ToString(CultureInfo.InvariantCulture),
+            _ => string.Empty
+        };
+    }
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value);
+    }
 }
 
 file class PassengerExistsResponse

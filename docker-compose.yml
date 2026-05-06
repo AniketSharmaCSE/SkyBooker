@@ -1,18 +1,17 @@
 services:
 
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: airline_sqlserver
+  postgres:
+    image: postgres:latest
+    container_name: airline_postgres
     environment:
-      ACCEPT_EULA: "Y"
-      SA_PASSWORD: "YourStrong@Passw0rd"
-      MSSQL_PID: "Developer"
+      POSTGRES_USER: airline
+      POSTGRES_PASSWORD: airline123
     ports:
-      - "1433:1433"
+      - "5432:5432"
     volumes:
-      - sqlserver_data:/var/opt/mssql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -Q "SELECT 1" -No
+      test: ["CMD-SHELL", "pg_isready -U airline"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,12 +63,12 @@ services:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineAuth;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=AirlineAuth;Username=airline;Password=airline123;
       - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
       - Jwt__Issuer=AuthService
       - Jwt__Audience=AirlineBookingApp
     depends_on:
-      sqlserver:
+      postgres:
         condition: service_healthy
 
   flight-service:
@@ -79,13 +78,13 @@ services:
       - "5001:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineFlight;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=AirlineFlight;Username=airline;Password=airline123;
       - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
       - Jwt__Issuer=AuthService
       - Jwt__Audience=AirlineBookingApp
       - ConnectionStrings__Redis=redis:6379
     depends_on:
-      sqlserver:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_started
@@ -97,13 +96,13 @@ services:
       - "5002:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineSeat;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=AirlineSeat;Username=airline;Password=airline123;
       - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
       - Jwt__Issuer=AuthService
       - Jwt__Audience=AirlineBookingApp
       - ServiceUrls__FlightService=http://flight-service:8080
     depends_on:
-      sqlserver:
+      postgres:
         condition: service_healthy
 
   booking-service:
@@ -113,7 +112,7 @@ services:
       - "5003:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineBookingDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=AirlineBookingDB;Username=airline;Password=airline123;
       - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
       - Jwt__Issuer=AuthService
       - Jwt__Audience=AirlineBookingApp
@@ -125,7 +124,7 @@ services:
       - RabbitMQ__UserName=airline
       - RabbitMQ__Password=airline123
     depends_on:
-      sqlserver:
+      postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_started
@@ -137,13 +136,13 @@ services:
       - "5004:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlinePassenger;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=AirlinePassenger;Username=airline;Password=airline123;
       - Jwt__Key=AirlineBooking_SuperSecret_JWT_Key_2024!
       - Jwt__Issuer=AuthService
       - Jwt__Audience=AirlineBookingApp
       - InternalApi__Key=SkyBooker_Internal_2024!
     depends_on:
-      sqlserver:
+      postgres:
         condition: service_healthy
 
   notification-service:
@@ -153,7 +152,7 @@ services:
       - "5005:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=AirlineNotification;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=AirlineNotification;Username=airline;Password=airline123;
       - RabbitMQ__HostName=rabbitmq
       - RabbitMQ__Port=5672
       - RabbitMQ__UserName=airline
@@ -162,10 +161,18 @@ services:
       - Jwt__Issuer=AuthService
       - Jwt__Audience=AirlineBookingApp
     depends_on:
-      sqlserver:
+      postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_started
 
+  airline-frontend:
+    build: ./airline-frontend
+    container_name: airline_ui
+    ports:
+      - "4200:80"
+    depends_on:
+      - api-gateway
+
 volumes:
-  sqlserver_data:
+  postgres_data:

@@ -12,6 +12,9 @@ public class Flight
 
     public decimal Price { get; set; }
 
+    public string Airline { get; set; } = string.Empty;
+    public decimal ComfortPremium { get; set; } = 100;
+
     public int TotalSeats { get; set; }
     public int AvailableSeats { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

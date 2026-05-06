@@ -186,16 +186,17 @@ public class BookingServiceTests
     }
 
     [Test]
-    public async Task SuggestSeatAsync_MapsSeatTypesFromSeatServiceResponse()
+    public async Task SuggestSeatAsync_MapsSeatProfilesFromSeatServiceResponse()
     {
         await using var db = TestHelpers.CreateBookingDbContext();
         const string json = """
         {
           "suggestedSeats": [
-            { "seatNumber": "1A", "flightId": 1, "column": "A" },
-            { "seatNumber": "1C", "flightId": 1, "column": "C" },
-            { "seatNumber": "1B", "flightId": 1, "column": "B" }
-          ]
+            { "id": 11, "seatNumber": "1A", "flightId": 1, "row": 1, "column": "A", "status": "Available", "seatType": "Window", "cabinClass": "Business", "classMultiplier": 2.00, "comfortScore": 9, "priceModifier": 500 },
+            { "id": 12, "seatNumber": "1C", "flightId": 1, "row": 1, "column": "C", "status": "Available", "seatType": "Aisle", "cabinClass": "Premium Economy", "classMultiplier": 1.35, "comfortScore": 8, "priceModifier": 500 },
+            { "id": 13, "seatNumber": "1B", "flightId": 1, "row": 1, "column": "B", "status": "Available", "seatType": "Middle", "cabinClass": "Economy", "classMultiplier": 1.00, "comfortScore": 3, "priceModifier": 200 }
+          ],
+          "reasoning": "Seats ranked by comfort score."
         }
         """;
         var service = CreateService(db, new FakeHttpClientFactory(content: json));
@@ -203,7 +204,12 @@ public class BookingServiceTests
         var result = await service.SuggestSeatAsync(1, null);
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Seats!.Select(s => s.SeatType), Is.EqualTo(new[] { "Window", "Aisle", "Middle" }));
+        Assert.That(result.Result!.Reasoning, Is.EqualTo("Seats ranked by comfort score."));
+        Assert.That(result.Result.SuggestedSeats.Select(s => s.SeatType), Is.EqualTo(new[] { "Window", "Aisle", "Middle" }));
+        Assert.That(result.Result.SuggestedSeats.Select(s => s.CabinClass), Is.EqualTo(new[] { "Business", "Premium Economy", "Economy" }));
+        Assert.That(result.Result.SuggestedSeats.Select(s => s.ClassMultiplier), Is.EqualTo(new[] { 2.00m, 1.35m, 1.00m }));
+        Assert.That(result.Result.SuggestedSeats.Select(s => s.ComfortScore), Is.EqualTo(new[] { 9, 8, 3 }));
+        Assert.That(result.Result.SuggestedSeats.Select(s => s.PriceModifier), Is.EqualTo(new[] { 500m, 500m, 200m }));
     }
 
     private static BookingManagementService CreateService(

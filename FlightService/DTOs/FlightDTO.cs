@@ -9,7 +9,8 @@ public class AddFlightRequest
     public DateTime ArrivalTime { get; set; }
     public decimal Price { get; set; }
     public int TotalSeats { get; set; }
-
+    public string Airline { get; set; } = string.Empty;
+    public decimal ComfortPremium { get; set; }
 }
 
 public class FlightResponse
@@ -25,5 +26,7 @@ public class FlightResponse
     public decimal Price { get; set; }
     public int TotalSeats { get; set; }
     public int AvailableSeats { get; set; }
+    public string Airline { get; set; } = string.Empty;
+    public decimal ComfortPremium { get; set; }
     public bool IsAvailable => AvailableSeats > 0;
 }
