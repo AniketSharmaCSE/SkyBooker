@@ -22,6 +22,10 @@ public class AuthService
     public async Task<(bool Success, string Message)> RegisterAsync(RegisterRequest request)
     {
         var email = request.Email.Trim().ToLower();
+        var fullName = request.FullName.Trim();
+
+        if (fullName.Length < 2)
+            return (false, "Full name must be at least 2 characters.");
 
         var exists = await _db.Users.AnyAsync(u => u.Email == email);
         if (exists)
@@ -36,7 +40,7 @@ public class AuthService
 
         var user = new User
         {
-            FullName = request.FullName.Trim(),
+            FullName = fullName,
             Email = email,
             PasswordHash = passwordHash,
             Role = role

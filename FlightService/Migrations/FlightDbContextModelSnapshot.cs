@@ -59,6 +59,9 @@ namespace FlightService.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Origin")
                         .IsRequired()
                         .HasMaxLength(10)

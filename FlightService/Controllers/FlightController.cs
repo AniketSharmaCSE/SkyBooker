@@ -40,6 +40,17 @@ public class FlightController : ControllerBase
         return Ok(flights);
     }
 
+    [HttpGet("all")]
+    [Authorize(Roles = "STAFF")]
+    public async Task<IActionResult> GetAllFlights(
+        [FromQuery] string? origin,
+        [FromQuery] string? destination,
+        [FromQuery] DateTime? date)
+    {
+        var flights = await _flightService.GetAllFlightsAsync(origin, destination, date);
+        return Ok(flights);
+    }
+
     // get flight by id
     [HttpGet("{id}")]
     [AllowAnonymous]
@@ -70,6 +81,28 @@ public class FlightController : ControllerBase
         var (success, message) = await _flightService.IncrementSeatAsync(id);
         if (!success)
             return BadRequest(new { message });
+
+        return Ok(new { message });
+    }
+
+    [HttpPut("{id}/cancel")]
+    [Authorize(Roles = "STAFF")]
+    public async Task<IActionResult> CancelFlight(int id)
+    {
+        var (success, flight, message) = await _flightService.CancelFlightAsync(id);
+        if (!success)
+            return BadRequest(new { message });
+
+        return Ok(new { message, flight });
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "STAFF")]
+    public async Task<IActionResult> DeleteFlight(int id)
+    {
+        var (success, message) = await _flightService.DeleteFlightAsync(id);
+        if (!success)
+            return NotFound(new { message });
 
         return Ok(new { message });
     }

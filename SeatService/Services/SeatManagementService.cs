@@ -154,7 +154,7 @@ public class SeatManagementService
         return new SeatSuggestionResponse
         {
             SuggestedSeats = suggestions,
-            Reasoning = "Seats ranked by comfort score, preferred seat type, row position, and flight-specific pricing rules."
+            Reasoning = "Available seats are sorted using seat type, row position, cabin class, and the selected preference."
         };
     }
 
@@ -184,6 +184,10 @@ public class SeatManagementService
     public async Task<(bool Success, SeatResponse? Seat, string Message)> BookSeatAsync(BookSeatRequest request)
     {
         request.FlightId = request.FlightId?.Trim() ?? string.Empty;
+        var flightData = await GetFlightDataAsync(request.FlightId);
+        if (flightData.HasValue && IsFlightCancelled(flightData.Value))
+            return (false, null, "Cannot book a seat on a cancelled flight.");
+
         var seat = await _db.Seats
             .FirstOrDefaultAsync(s =>
                 s.FlightId == request.FlightId &&
@@ -205,8 +209,6 @@ public class SeatManagementService
         await _db.SaveChangesAsync();
 
         _ = NotifyFlightServiceAsync(request.FlightId);
-
-        var flightData = await GetFlightDataAsync(request.FlightId);
 
         return (true, MapToResponse(seat, BuildSeatProfile(seat, flightData)), "Seat booked successfully.");
     }
@@ -296,29 +298,78 @@ public class SeatManagementService
         if (request.BusinessSeats == null && request.PremiumEconomySeats == null && request.EconomySeats == null)
             return null;
 
-        var business = request.BusinessSeats ?? 0;
-        var premium = request.PremiumEconomySeats ?? 0;
-        var economy = request.EconomySeats ?? 0;
-        var specifiedSum = business + premium + economy;
-
-        if (specifiedSum < totalSeats)
+        var requested = new Dictionary<CabinClass, int?>
         {
-            if (request.EconomySeats == null) economy = totalSeats - specifiedSum;
-            else if (request.PremiumEconomySeats == null) premium = totalSeats - specifiedSum;
-            else if (request.BusinessSeats == null) business = totalSeats - specifiedSum;
+            [CabinClass.Business] = request.BusinessSeats,
+            [CabinClass.PremiumEconomy] = request.PremiumEconomySeats,
+            [CabinClass.Economy] = request.EconomySeats
+        };
+
+        var specifiedSum = requested.Values.Where(v => v.HasValue).Sum(v => v!.Value);
+        var remainingSeats = totalSeats - specifiedSum;
+
+        var result = new Dictionary<CabinClass, int>
+        {
+            [CabinClass.Business] = request.BusinessSeats ?? 0,
+            [CabinClass.PremiumEconomy] = request.PremiumEconomySeats ?? 0,
+            [CabinClass.Economy] = request.EconomySeats ?? 0
+        };
+
+        var unspecifiedClasses = requested
+            .Where(entry => !entry.Value.HasValue)
+            .Select(entry => entry.Key)
+            .ToList();
+
+        if (remainingSeats > 0 && unspecifiedClasses.Count > 0)
+        {
+            var weights = new Dictionary<CabinClass, decimal>
+            {
+                [CabinClass.Business] = 0.10m,
+                [CabinClass.PremiumEconomy] = 0.20m,
+                [CabinClass.Economy] = 0.70m
+            };
+
+            var totalWeight = unspecifiedClasses.Sum(cabinClass => weights[cabinClass]);
+            var allocations = unspecifiedClasses
+                .Select(cabinClass =>
+                {
+                    var exact = remainingSeats * (weights[cabinClass] / totalWeight);
+                    var floor = (int)Math.Floor(exact);
+                    return new
+                    {
+                        CabinClass = cabinClass,
+                        Count = floor,
+                        Fraction = exact - floor
+                    };
+                })
+                .ToList();
+
+            foreach (var allocation in allocations)
+                result[allocation.CabinClass] = allocation.Count;
+
+            var distributed = allocations.Sum(a => a.Count);
+            var leftover = remainingSeats - distributed;
+
+            foreach (var allocation in allocations
+                         .OrderByDescending(a => a.Fraction)
+                         .ThenBy(a => a.CabinClass)
+                         .Take(leftover))
+            {
+                result[allocation.CabinClass]++;
+            }
         }
 
         return new List<(CabinClass CabinClass, int Count)>
         {
-            (CabinClass.Business, business),
-            (CabinClass.PremiumEconomy, premium),
-            (CabinClass.Economy, economy)
+            (CabinClass.Business, result[CabinClass.Business]),
+            (CabinClass.PremiumEconomy, result[CabinClass.PremiumEconomy]),
+            (CabinClass.Economy, result[CabinClass.Economy])
         };
     }
 
     private static bool IsValidFlightId(string flightId)
     {
-        return !string.IsNullOrWhiteSpace(flightId);
+        return int.TryParse(flightId, out var id) && id > 0;
     }
 
     private static List<CabinClass> BuildCabinClassPlan(
@@ -395,6 +446,12 @@ public class SeatManagementService
             return time.Hour >= 22 || time.Hour <= 4;
         }
         return false;
+    }
+
+    private static bool IsFlightCancelled(System.Text.Json.JsonElement flightData)
+    {
+        return flightData.TryGetProperty("isCancelled", out var cancelledProp) &&
+               cancelledProp.ValueKind == System.Text.Json.JsonValueKind.True;
     }
 
     private async Task<System.Text.Json.JsonElement?> GetFlightDataAsync(string flightId)

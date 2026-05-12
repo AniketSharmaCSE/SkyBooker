@@ -17,5 +17,6 @@ public class Flight
 
     public int TotalSeats { get; set; }
     public int AvailableSeats { get; set; }
+    public bool IsCancelled { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

@@ -79,7 +79,7 @@ public class FlightManagementService
 
         var query = _db.Flights.AsQueryable();
 
-        // case insensitive search
+        // Match partial city names from the search form.
         if (!string.IsNullOrWhiteSpace(origin))
             query = query.Where(f => f.Origin.ToLower().Contains(origin.Trim().ToLower()));
 
@@ -88,14 +88,15 @@ public class FlightManagementService
 
         if (date.HasValue)
         {
-            var day = date.Value.Date;
-            query = query.Where(f => f.DepartureTime.Date == day);
+            var dayStart = DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc);
+            var dayEnd = dayStart.AddDays(1);
+            query = query.Where(f => f.DepartureTime >= dayStart && f.DepartureTime < dayEnd);
         }
 
-        // filter departed or full flights
+        // Passengers should only see flights that can still be booked.
         var now = DateTime.UtcNow;
         query = query
-            .Where(f => f.DepartureTime > now && f.AvailableSeats > 0)
+            .Where(f => !f.IsCancelled && f.DepartureTime > now && f.AvailableSeats > 0)
             .OrderBy(f => f.DepartureTime);
 
         var flights = await query.ToListAsync();
@@ -110,6 +111,9 @@ public class FlightManagementService
         var flight = await _db.Flights.FindAsync(flightId);
         if (flight == null)
             return (false, "Flight not found.");
+
+        if (flight.IsCancelled)
+            return (false, "Cancelled flights cannot be booked.");
 
         if (flight.AvailableSeats <= 0)
             return (false, "No available seats.");
@@ -137,6 +141,63 @@ public class FlightManagementService
         return (true, "Seat incremented.");
     }
 
+    public async Task<List<FlightResponse>> GetAllFlightsAsync(
+        string? origin,
+        string? destination,
+        DateTime? date)
+    {
+        var query = _db.Flights.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(origin))
+            query = query.Where(f => f.Origin.ToLower().Contains(origin.Trim().ToLower()));
+
+        if (!string.IsNullOrWhiteSpace(destination))
+            query = query.Where(f => f.Destination.ToLower().Contains(destination.Trim().ToLower()));
+
+        if (date.HasValue)
+        {
+            var dayStart = DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc);
+            var dayEnd = dayStart.AddDays(1);
+            query = query.Where(f => f.DepartureTime >= dayStart && f.DepartureTime < dayEnd);
+        }
+
+        var flights = await query
+            .OrderBy(f => f.DepartureTime)
+            .ToListAsync();
+
+        return flights.Select(MapToResponse).ToList();
+    }
+
+    public async Task<(bool Success, FlightResponse? Flight, string Message)> CancelFlightAsync(int flightId)
+    {
+        var flight = await _db.Flights.FindAsync(flightId);
+        if (flight == null)
+            return (false, null, "Flight not found.");
+
+        if (flight.IsCancelled)
+            return (false, null, "Flight is already cancelled.");
+
+        flight.IsCancelled = true;
+        flight.AvailableSeats = 0;
+        await _db.SaveChangesAsync();
+        await _redis.InvalidateSearchCacheAsync();
+
+        return (true, MapToResponse(flight), "Flight cancelled successfully.");
+    }
+
+    public async Task<(bool Success, string Message)> DeleteFlightAsync(int flightId)
+    {
+        var flight = await _db.Flights.FindAsync(flightId);
+        if (flight == null)
+            return (false, "Flight not found.");
+
+        _db.Flights.Remove(flight);
+        await _db.SaveChangesAsync();
+        await _redis.InvalidateSearchCacheAsync();
+
+        return (true, "Flight deleted successfully.");
+    }
+
     private static FlightResponse MapToResponse(Flight flight) => new()
     {
         Id = flight.Id,
@@ -150,7 +211,8 @@ public class FlightManagementService
         TotalSeats = flight.TotalSeats,
         AvailableSeats = flight.AvailableSeats,
         Airline = flight.Airline,
-        ComfortPremium = flight.ComfortPremium
+        ComfortPremium = flight.ComfortPremium,
+        IsCancelled = flight.IsCancelled
     };
 
     private static string FormatTravelDuration(TimeSpan duration)

@@ -28,5 +28,13 @@ public class FlightResponse
     public int AvailableSeats { get; set; }
     public string Airline { get; set; } = string.Empty;
     public decimal ComfortPremium { get; set; }
-    public bool IsAvailable => AvailableSeats > 0;
+    public bool IsCancelled { get; set; }
+    public bool IsAvailable => !IsCancelled && AvailableSeats > 0 && DepartureTime > DateTime.UtcNow;
+    public string Status => IsCancelled
+        ? "Cancelled"
+        : DepartureTime <= DateTime.UtcNow
+            ? "Departed"
+            : AvailableSeats > 0
+                ? "Available"
+                : "Full";
 }

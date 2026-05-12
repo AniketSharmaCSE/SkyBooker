@@ -18,8 +18,12 @@ builder.Services.AddDbContext<FlightDbContext>(options =>
     ));
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
-    ConnectionMultiplexer.Connect(
-        builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379"));
+{
+    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    var options = ConfigurationOptions.Parse(redisConnection);
+    options.AbortOnConnectFail = false;
+    return ConnectionMultiplexer.Connect(options);
+});
 
 builder.Services.AddScoped<FlightManagementService>();
 builder.Services.AddScoped<RedisService>();

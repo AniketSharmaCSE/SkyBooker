@@ -22,30 +22,51 @@ public class RedisService
 
     public async Task<T?> GetAsync<T>(string key)
     {
-        var value = await _cache.StringGetAsync(key);
-        if (!value.HasValue)
-            return default;
+        try
+        {
+            var value = await _cache.StringGetAsync(key);
+            if (!value.HasValue)
+                return default;
 
-        return JsonSerializer.Deserialize<T>(value.ToString());
+            return JsonSerializer.Deserialize<T>(value.ToString());
+        }
+        catch (RedisException)
+        {
+            return default;
+        }
     }
 
     public async Task SetAsync<T>(string key, T value)
     {
-        var json = JsonSerializer.Serialize(value);
-        await _cache.StringSetAsync(key, json, SearchCacheTtl);
-        await _cache.SetAddAsync(SearchKeysSet, key);
-        await _cache.KeyExpireAsync(SearchKeysSet, TimeSpan.FromMinutes(10));
+        try
+        {
+            var json = JsonSerializer.Serialize(value);
+            await _cache.StringSetAsync(key, json, SearchCacheTtl);
+            await _cache.SetAddAsync(SearchKeysSet, key);
+            await _cache.KeyExpireAsync(SearchKeysSet, TimeSpan.FromMinutes(10));
+        }
+        catch (RedisException)
+        {
+            // Redis is an optimization. Flight reads/writes should still work if it is unavailable.
+        }
     }
 
     public async Task InvalidateSearchCacheAsync()
     {
-        var keys = await _cache.SetMembersAsync(SearchKeysSet);
-        if (keys.Length == 0)
-            return;
+        try
+        {
+            var keys = await _cache.SetMembersAsync(SearchKeysSet);
+            if (keys.Length == 0)
+                return;
 
-        var redisKeys = keys.Select(key => (RedisKey)key.ToString()).ToArray();
-        await _cache.KeyDeleteAsync(redisKeys);
-        await _cache.KeyDeleteAsync(SearchKeysSet);
+            var redisKeys = keys.Select(key => (RedisKey)key.ToString()).ToArray();
+            await _cache.KeyDeleteAsync(redisKeys);
+            await _cache.KeyDeleteAsync(SearchKeysSet);
+        }
+        catch (RedisException)
+        {
+            // Ignore cache invalidation failures; the database remains the source of truth.
+        }
     }
 
     private static string Normalize(string? value)

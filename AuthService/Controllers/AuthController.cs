@@ -1,6 +1,7 @@
 using AuthService.DTOs;
 using AuthService.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.RegularExpressions;
 
 namespace AuthService.Controllers;
 
@@ -27,9 +28,11 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "FullName, Email, and Password are required." });
         }
 
-        // check length
-        if (request.Password.Length < 6)
-            return BadRequest(new { message = "Password must be at least 6 characters." });
+        if (!IsValidEmail(request.Email))
+            return BadRequest(new { message = "Enter a valid email address." });
+
+        if (!IsStrongPassword(request.Password))
+            return BadRequest(new { message = "Password must be at least 8 characters and include uppercase, lowercase, number, and special character." });
 
         var (success, message) = await _authService.RegisterAsync(request);
 
@@ -49,11 +52,32 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Email and Password are required." });
         }
 
+        if (!IsValidEmail(request.Email))
+            return BadRequest(new { message = "Enter a valid email address." });
+
         var (success, response, message) = await _authService.LoginAsync(request);
 
         if (!success)
             return Unauthorized(new { message });
 
         return Ok(response);
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        return Regex.IsMatch(
+            email.Trim(),
+            @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+            RegexOptions.IgnoreCase,
+            TimeSpan.FromMilliseconds(250));
+    }
+
+    private static bool IsStrongPassword(string password)
+    {
+        return password.Length >= 8 &&
+               password.Any(char.IsUpper) &&
+               password.Any(char.IsLower) &&
+               password.Any(char.IsDigit) &&
+               password.Any(ch => !char.IsLetterOrDigit(ch));
     }
 }
