@@ -12,8 +12,8 @@ using PassengerService.Data;
 namespace PassengerService.Migrations
 {
     [DbContext(typeof(PassengerDbContext))]
-    [Migration("20260506071330_InitialPostgres")]
-    partial class InitialPostgres
+    [Migration("20260513050438_InitialPostgresCreate")]
+    partial class InitialPostgresCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

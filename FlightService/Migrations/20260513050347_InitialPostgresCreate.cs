@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FlightService.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialPostgres : Migration
+    public partial class InitialPostgresCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -28,6 +28,7 @@ namespace FlightService.Migrations
                     ComfortPremium = table.Column<decimal>(type: "numeric", nullable: false),
                     TotalSeats = table.Column<int>(type: "integer", nullable: false),
                     AvailableSeats = table.Column<int>(type: "integer", nullable: false),
+                    IsCancelled = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
